@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin - Manajemen Anggota (Aman)</title>
+    <style>
+      body { font-family: sans-serif; background-color: #f4f4f9; }
+      .container { padding: 20px; max-width: 800px; margin: auto; background-color: #fff; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+      table { width: 100%; border-collapse: collapse; margin: 25px 0; font-size: 16px; text-align: left; }
+      th, td { padding: 12px; border-bottom: 1px solid #ddd; }
+      th { background-color: #f2f2f2; }
+      .form-group { margin-bottom: 15px; }
+      input { padding: 10px; margin-right: 10px; border: 1px solid #ccc; border-radius: 4px; }
+      button { padding: 10px 18px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 4px; }
+      button:hover { background-color: #0056b3; }
+      h1, h2 { color: #333; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Manajemen Anggota Perpustakaan (Versi Aman)</h1>
+
+      <!-- Form Tambah Anggota -->
+      <div class="form-section">
+        <h2>Tambah Anggota Baru</h2>
+        <form id="addMemberForm">
+          <div class="form-group">
+            <label for="username">Username:</label>
+            <input type="text" id="username" required />
+            <button type="submit">Tambah Anggota</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Daftar Anggota -->
+      <div class="list-section">
+        <h2>Daftar Anggota</h2>
+        <table id="memberList">
+          <thead>
+            <tr>
+              <th>Username</th>
+              <th>Tanggal Daftar</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Data akan dimuat di sini -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <script>
+      // Kunci API untuk Admin. Di aplikasi nyata, ini tidak boleh diekspos di sisi klien.
+      // Cara yang lebih baik adalah halaman admin ini dilayani oleh backend (PHP) yang sudah terautentikasi (login session),
+      // lalu backend tersebut yang melakukan panggilan ke API.
+      // Namun, untuk tujuan demonstrasi, kita letakkan di sini.
+      const API_KEY_ADMIN = 'abc-123-admin-secret-key';
+
+      // Fungsi untuk memuat daftar anggota
+      function loadMembers() {
+        fetch("[http://192.168.1.4/revisi/list_members.php](http://192.168.1.4/revisi/list_members.php)", {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${API_KEY_ADMIN}`
+            }
+        })
+          .then((response) => {
+            if (!response.ok) {
+              // Jika status 401/403 (unauthorized/forbidden), tampilkan pesan error
+              if(response.status === 401 || response.status === 403) {
+                  alert('Error: Anda tidak memiliki izin untuk mengakses data ini. Periksa API Key.');
+              }
+              throw new Error("Network response was not ok");
+            }
+            return response.json();
+          })
+          .then((data) => {
+            const tbody = document.querySelector("#memberList tbody");
+            tbody.innerHTML = "";
+            if (Array.isArray(data) && data.length > 0) {
+              data.forEach((member) => {
+                const row = `
+                    <tr>
+                        <td>${member.username}</td>
+                        <td>${new Date(member.created_at).toLocaleDateString()}</td>
+                    </tr>`;
+                tbody.innerHTML += row;
+              });
+            } else {
+              tbody.innerHTML = '<tr><td colspan="2">Tidak ada data anggota atau gagal memuat.</td></tr>';
+            }
+          })
+          .catch((error) => {
+            console.error("Error fetching members:", error);
+            document.querySelector("#memberList tbody").innerHTML =
+              '<tr><td colspan="2">Gagal memuat data anggota. Periksa konsol untuk detail.</td></tr>';
+          });
+      }
+
+      // Handle submit form tambah anggota
+      document.getElementById("addMemberForm").addEventListener("submit", function (e) {
+          e.preventDefault();
+          const username = document.getElementById("username").value;
+
+          fetch("[http://192.168.1.4/revisi/add_member.php](http://192.168.1.4/revisi/add_member.php)", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${API_KEY_ADMIN}`
+            },
+            body: JSON.stringify({ username: username }),
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.success) {
+                alert("Anggota berhasil ditambahkan");
+                document.getElementById("username").value = "";
+                loadMembers(); // Refresh daftar anggota
+              } else {
+                alert(`Gagal: ${data.message || 'Terjadi kesalahan'}`);
+              }
+            })
+            .catch((error) => {
+              console.error("Error adding member:", error);
+              alert("Gagal menambahkan anggota. Periksa konsol untuk detail.");
+            });
+        });
+
+      // Load anggota saat halaman pertama kali dibuka
+      document.addEventListener("DOMContentLoaded", loadMembers);
+    </script>
+  </body>
+</html>
